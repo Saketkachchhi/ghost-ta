@@ -142,12 +142,17 @@ export default function HomePage() {
     // Build a playable URL for the player. Bundled-demo files come in
     // with name "demo_lecture.mp3" — we can serve them straight from /public
     // so the player streams a real file. Anything else we wrap in a
-    // Blob URL so the browser plays it back from memory. Detect kind from
-    // MIME type / extension so we render <video> for Zoom MP4s (judges see
-    // the lecturer + slides) and <audio> for plain audio.
-    const isVideo =
-      file.type.startsWith("video/") ||
-      /\.(mp4|mov|webm|mkv|avi)$/i.test(file.name);
+    // Blob URL so the browser plays it back from memory.
+    //
+    // Detect media kind. Order matters: AUDIO extensions win over MIME type
+    // because Windows tags ".mpeg" as video/mpeg even though many MP3 files
+    // get saved as ".mp3.mpeg" (Zoom does this on some configs). The
+    // compound-extension regex catches "demo_lecture.mp3.mpeg" -> audio.
+    const name = file.name.toLowerCase();
+    const knownAudio = /\.(mp3|wav|m4a|flac|ogg|aac|opus)(\.|$)/i.test(name);
+    const knownVideoExt = /\.(mp4|mov|webm|mkv|avi)$/i.test(name);
+    const videoMime = file.type.startsWith("video/");
+    const isVideo = !knownAudio && (knownVideoExt || videoMime);
     setMediaKind(isVideo ? "video" : "audio");
     if (file.name === "demo_lecture.mp3") {
       setAudioUrl("/demo_lecture.mp3");
@@ -255,9 +260,11 @@ export default function HomePage() {
       </div>
 
       <section className="grid flex-1 grid-cols-12 overflow-hidden">
-        {/* LEFT: controls — hidden in print */}
+        {/* LEFT: controls — hidden in print. min-h-0 + overflow-y-auto so the
+            sidebar scrolls when content (uploader + video preview + topic card)
+            exceeds the viewport height. */}
         <aside
-          className="col-span-3 flex flex-col gap-4 border-r border-border p-6"
+          className="col-span-3 flex min-h-0 flex-col gap-4 overflow-y-auto border-r border-border p-6"
           data-print-hide
         >
           <LanguageSelector
