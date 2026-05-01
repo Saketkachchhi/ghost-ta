@@ -9,6 +9,7 @@ import { CHUNK_SECONDS, type Concept } from "@/lib/types";
 type Props = {
   concept: Concept;
   onJumpTo?: (seconds: number) => void;
+  forceOpen?: boolean;
 };
 
 function formatMmSs(seconds: number): string {
@@ -17,8 +18,9 @@ function formatMmSs(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function ConceptCard({ concept, onJumpTo }: Props) {
-  const [open, setOpen] = useState(false);
+export default function ConceptCard({ concept, onJumpTo, forceOpen }: Props) {
+  const [openState, setOpen] = useState(false);
+  const open = forceOpen || openState;
   const pct = Math.round(concept.emphasis * 100);
   const high = concept.emphasis >= 0.75;
   const med = concept.emphasis >= 0.5 && !high;
@@ -29,6 +31,7 @@ export default function ConceptCard({ concept, onJumpTo }: Props) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
+      data-print-section
       className={cn(
         "rounded-lg border bg-card p-4",
         high && "border-emerald-500/50",

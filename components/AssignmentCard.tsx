@@ -7,7 +7,11 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { Assignment } from "@/lib/types";
 
-type Props = { assignment: Assignment; sessionId: string | null };
+type Props = {
+  assignment: Assignment;
+  sessionId: string | null;
+  forceOpen?: boolean;
+};
 
 function daysUntil(iso: string): number | null {
   const d = new Date(iso);
@@ -17,8 +21,13 @@ function daysUntil(iso: string): number | null {
   return Math.ceil(ms / (1000 * 60 * 60 * 24));
 }
 
-export default function AssignmentCard({ assignment, sessionId }: Props) {
-  const [open, setOpen] = useState(false);
+export default function AssignmentCard({
+  assignment,
+  sessionId,
+  forceOpen,
+}: Props) {
+  const [openState, setOpen] = useState(false);
+  const open = forceOpen || openState;
   const days = daysUntil(assignment.due_date);
   const soon = days !== null && days <= 7;
 
@@ -27,6 +36,7 @@ export default function AssignmentCard({ assignment, sessionId }: Props) {
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
+      data-print-section
       className={cn(
         "rounded-lg border bg-card p-3",
         soon ? "border-amber-500/50" : "border-border",

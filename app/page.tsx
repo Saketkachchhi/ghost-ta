@@ -33,8 +33,21 @@ export default function HomePage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [sourceLanguage, setSourceLanguage] = useState<string>("auto");
   const [targetLanguage, setTargetLanguage] = useState<string>("en");
+  const [printing, setPrinting] = useState(false);
   const esRef = useRef<EventSource | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Expand all cards, wait a frame for the DOM to update, open the print
+  // dialog, then collapse back to the user's prior state.
+  function exportPdf() {
+    setPrinting(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.print();
+        setTimeout(() => setPrinting(false), 100);
+      });
+    });
+  }
 
   function jumpTo(seconds: number) {
     const a = audioRef.current;
@@ -146,7 +159,10 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto flex h-screen w-full max-w-[1600px] flex-col">
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
+      <header
+        className="flex items-center justify-between border-b border-border px-6 py-4"
+        data-print-hide
+      >
         <div className="flex items-baseline gap-3">
           <h1 className="font-mono text-xl tracking-tight text-emerald-500">
             ghost<span className="text-foreground">/ta</span>
@@ -155,12 +171,28 @@ export default function HomePage() {
             the TA you wish you had
           </span>
         </div>
-        <ExportBar sessionId={sessionId} canExport={status === "done"} />
+        <ExportBar
+          sessionId={sessionId}
+          canExport={status === "done"}
+          onPrintPdf={exportPdf}
+        />
       </header>
 
+      {/* Print-only header — hidden on screen, visible in PDF. */}
+      <div className="hidden print:block">
+        <h1 className="font-mono text-2xl">Ghost TA — Study Guide</h1>
+        {topicSummary && (
+          <p className="mt-1 italic text-muted-foreground">{topicSummary}</p>
+        )}
+        <hr className="my-4 border-foreground/30" />
+      </div>
+
       <section className="grid flex-1 grid-cols-12 overflow-hidden">
-        {/* LEFT: controls */}
-        <aside className="col-span-3 flex flex-col gap-4 border-r border-border p-6">
+        {/* LEFT: controls — hidden in print */}
+        <aside
+          className="col-span-3 flex flex-col gap-4 border-r border-border p-6"
+          data-print-hide
+        >
           <LanguageSelector
             sourceLanguage={sourceLanguage}
             targetLanguage={targetLanguage}
@@ -221,6 +253,7 @@ export default function HomePage() {
                   key={c.id}
                   concept={c}
                   onJumpTo={audioUrl ? jumpTo : undefined}
+                  forceOpen={printing}
                 />
               ))}
             </div>
@@ -251,6 +284,7 @@ export default function HomePage() {
                     key={a.id}
                     assignment={a}
                     sessionId={sessionId}
+                    forceOpen={printing}
                   />
                 ))}
               </div>

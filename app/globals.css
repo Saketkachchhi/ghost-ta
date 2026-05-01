@@ -128,3 +128,83 @@
     @apply font-sans;
   }
 }
+
+/* ============================================================
+ * Print stylesheet — invoked by ExportBar's PDF button.
+ * page.tsx sets `printing: true` which forces all collapsed
+ * cards to expand, then calls window.print(). The print dialog
+ * lets the user "Save as PDF". This stylesheet hides the
+ * controls/audio chrome and reflows the study guide as a clean
+ * single-column document for paper or PDF.
+ * ============================================================ */
+@media print {
+  /* Force light background regardless of dark-mode class. */
+  html, body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Hide non-essentials. Selective via data-print-hide so we keep the
+     right-column assignments + office-hours panels in the print. */
+  [data-print-hide],
+  audio,
+  video,
+  button:not([data-print-keep]) {
+    display: none !important;
+  }
+
+  /* Collapse the 3-column grid into a single full-width column. */
+  main, section {
+    display: block !important;
+    height: auto !important;
+    max-width: none !important;
+    width: 100% !important;
+    overflow: visible !important;
+    border: none !important;
+  }
+
+  /* Preserve concept cards but flatten styling for print. */
+  [data-print-section] {
+    page-break-inside: avoid;
+    margin-bottom: 1rem;
+    border: 1px solid #ccc !important;
+    background: white !important;
+    color: black !important;
+    padding: 0.75rem !important;
+  }
+
+  /* Force all text to be black-ish on white. */
+  [data-print-section] * {
+    color: black !important;
+    background: transparent !important;
+    border-color: #ddd !important;
+  }
+
+  /* Slightly bigger body text for paper readability. */
+  [data-print-section] {
+    font-size: 11pt;
+  }
+  [data-print-section] h1 {
+    font-size: 18pt;
+  }
+  [data-print-section] h2 {
+    font-size: 14pt;
+    border-bottom: 1px solid #999;
+    padding-bottom: 4pt;
+    margin-top: 18pt;
+  }
+  [data-print-section] h3 {
+    font-size: 12pt;
+  }
+
+  /* Make sure ScrollArea contents don't clip in print. */
+  [data-slot="scroll-area-viewport"] {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  @page {
+    margin: 0.6in;
+  }
+}
