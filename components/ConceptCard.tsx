@@ -1,0 +1,91 @@
+"use client";
+
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { Concept } from "@/lib/types";
+
+export default function ConceptCard({ concept }: { concept: Concept }) {
+  const [open, setOpen] = useState(false);
+  const pct = Math.round(concept.emphasis * 100);
+  const high = concept.emphasis >= 0.75;
+  const med = concept.emphasis >= 0.5 && !high;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className={cn(
+        "rounded-lg border bg-card p-4",
+        high && "border-emerald-500/50",
+        med && "border-amber-500/40",
+        !high && !med && "border-border",
+      )}
+    >
+      <button
+        className="flex w-full items-start justify-between gap-3 text-left"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            {open ? (
+              <ChevronDown className="size-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="size-4 text-muted-foreground" />
+            )}
+            <h3 className="font-semibold text-foreground">{concept.name}</h3>
+          </div>
+          <p className="mt-1 pl-6 text-sm text-muted-foreground">
+            {concept.definition}
+          </p>
+        </div>
+        <div className="flex w-28 flex-shrink-0 flex-col items-end gap-1">
+          <span
+            className={cn(
+              "font-mono text-xs",
+              high && "text-emerald-500",
+              med && "text-amber-500",
+              !high && !med && "text-muted-foreground",
+            )}
+          >
+            {concept.emphasis.toFixed(2)}
+          </span>
+          <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn(
+                "h-full",
+                high && "bg-emerald-500",
+                med && "bg-amber-500",
+                !high && !med && "bg-muted-foreground/40",
+              )}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+      </button>
+
+      {open && concept.practice_questions.length > 0 && (
+        <div className="mt-3 border-l-2 border-border pl-4">
+          <div className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
+            Predicted exam questions
+          </div>
+          <ul className="space-y-1.5 text-sm text-foreground">
+            {concept.practice_questions.map((q, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="text-muted-foreground">{i + 1}.</span>
+                <span>{q}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {open && concept.practice_questions.length === 0 && (
+        <p className="mt-3 pl-6 text-xs text-muted-foreground">
+          No practice questions yet — emphasis is below the threshold.
+        </p>
+      )}
+    </motion.div>
+  );
+}

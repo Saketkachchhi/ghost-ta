@@ -1,65 +1,237 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useRef, useState } from "react";
+import AudioUploader from "@/components/AudioUploader";
+import LectureProgress from "@/components/LectureProgress";
+import ConceptCard from "@/components/ConceptCard";
+import AssignmentCard from "@/components/AssignmentCard";
+import QuestionList from "@/components/QuestionList";
+import ExportBar from "@/components/ExportBar";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type {
+  Assignment,
+  Concept,
+  FlaggedQuestion,
+  StreamEvent,
+} from "@/lib/types";
+
+type Status = "idle" | "uploading" | "processing" | "done" | "error";
+
+export default function HomePage() {
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [status, setStatus] = useState<Status>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [chunksDone, setChunksDone] = useState(0);
+  const [chunksTotal, setChunksTotal] = useState(0);
+  const [topicSummary, setTopicSummary] = useState("");
+  const [concepts, setConcepts] = useState<Concept[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [questions, setQuestions] = useState<FlaggedQuestion[]>([]);
+  const esRef = useRef<EventSource | null>(null);
+
+  function handleEvent(event: StreamEvent) {
+    switch (event.type) {
+      case "status":
+        setStatus(event.status === "done" ? "done" : "processing");
+        setChunksDone(event.chunks_done);
+        setChunksTotal(event.chunks_total);
+        break;
+      case "concept":
+        setConcepts((prev) => [...prev, event.concept]);
+        break;
+      case "concept_update":
+        setConcepts((prev) => {
+          const idx = prev.findIndex((c) => c.id === event.concept.id);
+          if (idx === -1) return [...prev, event.concept];
+          const copy = prev.slice();
+          copy[idx] = event.concept;
+          return copy;
+        });
+        break;
+      case "assignment":
+        setAssignments((prev) => [...prev, event.assignment]);
+        break;
+      case "question":
+        setQuestions((prev) => [...prev, event.question]);
+        break;
+      case "topic_summary":
+        setTopicSummary(event.text);
+        break;
+      case "done":
+        setStatus("done");
+        break;
+      case "error":
+        setStatus("error");
+        setError(event.message);
+        break;
+    }
+  }
+
+  useEffect(() => {
+    if (!sessionId) return;
+    const es = new EventSource(`/api/stream?session_id=${sessionId}`);
+    esRef.current = es;
+
+    es.onmessage = (e) => {
+      try {
+        const event: StreamEvent = JSON.parse(e.data);
+        handleEvent(event);
+      } catch {
+        // ignore parse errors (heartbeats etc.)
+      }
+    };
+
+    return () => {
+      es.close();
+      esRef.current = null;
+    };
+  }, [sessionId]);
+
+  async function handleUpload(file: File) {
+    resetState();
+    setStatus("uploading");
+    const fd = new FormData();
+    fd.append("audio", file);
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) throw new Error(`upload failed: ${res.status}`);
+      const json = (await res.json()) as { session_id: string };
+      setSessionId(json.session_id);
+    } catch (e) {
+      setStatus("error");
+      setError((e as Error).message);
+    }
+  }
+
+  function resetState() {
+    setError(null);
+    setChunksDone(0);
+    setChunksTotal(0);
+    setTopicSummary("");
+    setConcepts([]);
+    setAssignments([]);
+    setQuestions([]);
+  }
+
+  const sortedConcepts = [...concepts].sort((a, b) => b.emphasis - a.emphasis);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main className="mx-auto flex h-screen w-full max-w-[1600px] flex-col">
+      <header className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="flex items-baseline gap-3">
+          <h1 className="font-mono text-xl tracking-tight text-emerald-500">
+            ghost<span className="text-foreground">/ta</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+          <span className="text-xs text-muted-foreground">
+            the TA you wish you had
+          </span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+        <ExportBar sessionId={sessionId} canExport={status === "done"} />
+      </header>
+
+      <section className="grid flex-1 grid-cols-12 overflow-hidden">
+        {/* LEFT: controls */}
+        <aside className="col-span-3 flex flex-col gap-4 border-r border-border p-6">
+          <AudioUploader
+            onSelect={handleUpload}
+            disabled={status === "uploading" || status === "processing"}
+          />
+          <LectureProgress
+            status={status}
+            chunksDone={chunksDone}
+            chunksTotal={chunksTotal}
+            error={error}
+          />
+          {topicSummary && (
+            <div className="rounded-lg border border-border bg-card p-3 text-sm text-foreground">
+              <div className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
+                Lecture topic
+              </div>
+              {topicSummary}
+            </div>
+          )}
+        </aside>
+
+        {/* CENTER: study guide */}
+        <section className="col-span-6 flex flex-col overflow-hidden border-r border-border">
+          <div className="flex items-center justify-between border-b border-border px-6 py-3">
+            <h2 className="font-mono text-sm uppercase tracking-wider text-muted-foreground">
+              Study guide
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              {sortedConcepts.length} concept
+              {sortedConcepts.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <ScrollArea className="flex-1 px-6 py-4">
+            {sortedConcepts.length === 0 && status !== "processing" && (
+              <p className="mt-12 text-center text-sm text-muted-foreground">
+                Upload a lecture to begin. Concepts and exam predictions will
+                appear here as the agent listens.
+              </p>
+            )}
+            {sortedConcepts.length === 0 && status === "processing" && (
+              <p className="mt-12 text-center text-sm text-muted-foreground">
+                Listening
+                <span className="inline-block w-6 text-left">
+                  {".".repeat((chunksDone % 3) + 1)}
+                </span>
+              </p>
+            )}
+            <div className="space-y-3">
+              {sortedConcepts.map((c) => (
+                <ConceptCard key={c.id} concept={c} />
+              ))}
+            </div>
+          </ScrollArea>
+        </section>
+
+        {/* RIGHT: assignments + office hours */}
+        <aside className="col-span-3 flex flex-col overflow-hidden">
+          <div className="flex max-h-[55%] flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3">
+              <h2 className="font-mono text-sm uppercase tracking-wider text-muted-foreground">
+                Assignments
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                {assignments.length}
+              </span>
+            </div>
+            <ScrollArea className="flex-1 px-5 pb-4">
+              <div className="space-y-2">
+                {assignments.length === 0 && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Assignments mentioned by the professor will appear here with
+                    a one-click calendar export.
+                  </p>
+                )}
+                {assignments.map((a) => (
+                  <AssignmentCard
+                    key={a.id}
+                    assignment={a}
+                    sessionId={sessionId}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+          <Separator />
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3">
+              <h2 className="font-mono text-sm uppercase tracking-wider text-muted-foreground">
+                Office hours
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                {questions.length}
+              </span>
+            </div>
+            <ScrollArea className="flex-1 px-5 pb-4">
+              <QuestionList questions={questions} />
+            </ScrollArea>
+          </div>
+        </aside>
+      </section>
+    </main>
   );
 }
