@@ -6,7 +6,13 @@ import type {
 } from 'openai/resources/chat/completions';
 import { randomUUID } from 'node:crypto';
 import { emit, getSession, updateSession } from './state';
-import type { Assignment, Concept, FlaggedQuestion, Session } from './types';
+import {
+  type Assignment,
+  type Concept,
+  type FlaggedQuestion,
+  type Session,
+  languageLabel,
+} from './types';
 
 // Calling Claude through OpenRouter's OpenAI-compatible API. We already have the
 // OpenAI SDK in the project for Whisper, so we reuse it here pointed at OpenRouter.
@@ -29,7 +35,21 @@ function getClient(): OpenAI {
   return client;
 }
 
-const SYSTEM_PROMPT = `You are Ghost TA, an AI agent listening to a university lecture in real time.
+function buildSystemPrompt(targetLanguage: string): string {
+  const lang = languageLabel(targetLanguage);
+  const langInstruction =
+    targetLanguage === 'en'
+      ? `All output (concept names, definitions, practice questions, assignment titles,
+topic summary, drafted office-hours questions) must be written in English. Keep
+proper nouns, formulas, and code identifiers in their original form.`
+      : `All output (concept names, definitions, practice questions, assignment titles,
+topic summary, drafted office-hours questions) must be written in ${lang}. The
+lecture audio may be in a different language — translate naturally and
+idiomatically into ${lang}. Keep proper nouns, formulas, mathematical notation,
+and code identifiers in their original form. Use the script native to ${lang}
+(e.g. Devanagari for Hindi, Cyrillic for Russian, Hanzi for Chinese).`;
+
+  return `You are Ghost TA, an AI agent listening to a university lecture in real time.
 Your job is to build a study guide that maximizes the student's exam performance.
 
 On every transcript chunk, you must:
@@ -41,7 +61,8 @@ On every transcript chunk, you must:
   4. Flag any passage that was confusing or rushed for office-hours follow-up.
   5. Detect any assignment, project, or problem set the professor mentions.
      Extract due_date (ISO format YYYY-MM-DD), requirements (format, length,
-     allowed tools, group rules, submission method), and a verbatim source quote.
+     allowed tools, group rules, submission method), and a verbatim source quote
+     (this quote should remain in the LECTURE'S original language, NOT translated).
      Be conservative: only flag clear assignment statements, not vague references
      like "we'll do problems on this later." If the date is relative
      ("next Friday"), resolve it to the best ISO date you can infer; if you cannot,
@@ -52,6 +73,9 @@ On every transcript chunk, you must:
 Be RUTHLESS about emphasis. Most lecture content is fluff. Your value is finding
 the 20% the student must master.
 
+LANGUAGE INSTRUCTION:
+${langInstruction}
+
 Output rules:
 - Use the provided tools. Do not write prose responses.
 - Avoid duplicates: if a concept already exists in the running guide, only
@@ -59,6 +83,7 @@ Output rules:
   its emphasis.
 - Cap at 10 concepts per lecture; if you already have 10, replace the
   lowest-emphasis one only if the new concept clearly outranks it.`;
+}
 
 const TOOLS: ChatCompletionTool[] = [
   {
@@ -199,7 +224,7 @@ ${snapshotForPrompt(session)}
 Decide which tools to call for this chunk. Stop calling tools when you have nothing to add.`;
 
   const messages: ChatCompletionMessageParam[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: buildSystemPrompt(session.target_language || 'en') },
     { role: 'user', content: userMsg },
   ];
 

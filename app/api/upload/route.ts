@@ -18,6 +18,8 @@ export async function POST(req: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'no audio file' }, { status: 400 });
   }
+  const sourceLanguage = (form.get('source_language') as string) || 'auto';
+  const targetLanguage = (form.get('target_language') as string) || 'en';
 
   const id = randomUUID();
   const workDir = join(tmpdir(), 'ghost-ta', id);
@@ -36,6 +38,8 @@ export async function POST(req: Request) {
     transcript_so_far: '',
     study_guide: { concepts: [], assignments: [], questions: [], topic_summary: '' },
     created_at: Date.now(),
+    source_language: sourceLanguage,
+    target_language: targetLanguage,
   };
   createSession(session);
 
@@ -72,6 +76,8 @@ async function runPipeline(sessionId: string, audioPath: string, workDir: string
   });
 
   const transcripts: (string | undefined)[] = new Array(chunks.length);
+  const session = getSession(sessionId);
+  const sourceLang = session?.source_language ?? 'auto';
 
   // N parallel Whisper workers, each pulling the next un-claimed chunk.
   let nextToTranscribe = 0;
@@ -81,7 +87,7 @@ async function runPipeline(sessionId: string, audioPath: string, workDir: string
       while (true) {
         const i = nextToTranscribe++;
         if (i >= chunks.length) return;
-        const text = await transcribeChunk(chunks[i]);
+        const text = await transcribeChunk(chunks[i], sourceLang);
         transcripts[i] = text;
         emit(sessionId, { type: 'transcript', chunk_index: i, text });
       }

@@ -46,7 +46,40 @@ export type Session = {
   transcript_so_far: string;
   study_guide: StudyGuide;
   created_at: number;
+  // 'auto' lets Whisper detect; otherwise an ISO 639-1 code ('en', 'es', ...)
+  source_language: string;
+  // ISO 639-1 code for the study guide output. The agent translates as needed.
+  target_language: string;
 };
+
+// Languages we surface in the UI. Whisper supports many more — these are the
+// ones with the strongest accuracy for academic lecture content.
+export const LANGUAGES: { code: string; label: string }[] = [
+  { code: 'auto', label: 'Auto-detect' },
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Spanish (Español)' },
+  { code: 'fr', label: 'French (Français)' },
+  { code: 'de', label: 'German (Deutsch)' },
+  { code: 'it', label: 'Italian (Italiano)' },
+  { code: 'pt', label: 'Portuguese (Português)' },
+  { code: 'nl', label: 'Dutch (Nederlands)' },
+  { code: 'ru', label: 'Russian (Русский)' },
+  { code: 'pl', label: 'Polish (Polski)' },
+  { code: 'tr', label: 'Turkish (Türkçe)' },
+  { code: 'ar', label: 'Arabic (العربية)' },
+  { code: 'hi', label: 'Hindi (हिन्दी)' },
+  { code: 'ja', label: 'Japanese (日本語)' },
+  { code: 'ko', label: 'Korean (한국어)' },
+  { code: 'zh', label: 'Chinese (中文)' },
+  { code: 'vi', label: 'Vietnamese (Tiếng Việt)' },
+];
+
+// Output languages — same list minus 'auto'.
+export const OUTPUT_LANGUAGES = LANGUAGES.filter((l) => l.code !== 'auto');
+
+export function languageLabel(code: string): string {
+  return LANGUAGES.find((l) => l.code === code)?.label ?? code;
+}
 
 export type StreamEvent =
   | { type: 'status'; status: SessionStatus; chunks_done: number; chunks_total: number }

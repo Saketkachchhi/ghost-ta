@@ -8,6 +8,7 @@ import AssignmentCard from "@/components/AssignmentCard";
 import QuestionList from "@/components/QuestionList";
 import ExportBar from "@/components/ExportBar";
 import AudioPlayer from "@/components/AudioPlayer";
+import LanguageSelector from "@/components/LanguageSelector";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type {
@@ -30,6 +31,8 @@ export default function HomePage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [questions, setQuestions] = useState<FlaggedQuestion[]>([]);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [sourceLanguage, setSourceLanguage] = useState<string>("auto");
+  const [targetLanguage, setTargetLanguage] = useState<string>("en");
   const esRef = useRef<EventSource | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -114,6 +117,8 @@ export default function HomePage() {
     }
     const fd = new FormData();
     fd.append("audio", file);
+    fd.append("source_language", sourceLanguage);
+    fd.append("target_language", targetLanguage);
     try {
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       if (!res.ok) throw new Error(`upload failed: ${res.status}`);
@@ -156,6 +161,13 @@ export default function HomePage() {
       <section className="grid flex-1 grid-cols-12 overflow-hidden">
         {/* LEFT: controls */}
         <aside className="col-span-3 flex flex-col gap-4 border-r border-border p-6">
+          <LanguageSelector
+            sourceLanguage={sourceLanguage}
+            targetLanguage={targetLanguage}
+            onSourceChange={setSourceLanguage}
+            onTargetChange={setTargetLanguage}
+            disabled={status === "uploading" || status === "processing"}
+          />
           <AudioUploader
             onSelect={handleUpload}
             disabled={status === "uploading" || status === "processing"}
