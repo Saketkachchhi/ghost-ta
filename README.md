@@ -35,7 +35,7 @@ produces a structured study guide as the lecture progresses:
 
 - **Next.js 16** (App Router) — UI + API routes in one project.
 - **React 19** + **Tailwind CSS v4** + **shadcn/ui** + **framer-motion** + **lucide-react**.
-- **Anthropic Claude Sonnet 4.5** — agent loop with tool use.
+- **Claude Sonnet 4.5 via OpenRouter** — agent loop with tool use, called through OpenRouter's OpenAI-compatible API (we reuse the OpenAI SDK pointed at `openrouter.ai/api/v1`).
 - **OpenAI Whisper (`whisper-1`)** — transcription.
 - **ffmpeg** — server-side 30-second chunking (must be on PATH).
 - **Server-Sent Events** — streaming agent output to the browser.
@@ -60,13 +60,13 @@ Prerequisites:
 
 - Node.js 20+
 - `ffmpeg` on PATH (`winget install Gyan.FFmpeg` on Windows, `brew install ffmpeg` on macOS)
-- An OpenAI API key (Whisper) and an Anthropic API key (Claude)
+- An OpenAI API key (Whisper) and an OpenRouter API key (Claude routed via OpenRouter)
 
 ```bash
 git clone https://github.com/Saketkachchhi/ghost-ta.git
 cd ghost-ta
 cp .env.example .env.local
-# fill in OPENAI_API_KEY and ANTHROPIC_API_KEY in .env.local
+# fill in OPENAI_API_KEY and OPENROUTER_API_KEY in .env.local
 npm install
 npm run dev
 # open http://localhost:3000 and drop a lecture .mp3 onto the upload zone

@@ -1,18 +1,32 @@
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool,
+  ChatCompletionMessageToolCall,
+} from 'openai/resources/chat/completions';
 import { randomUUID } from 'node:crypto';
 import { emit, getSession, updateSession } from './state';
 import type { Assignment, Concept, FlaggedQuestion, Session } from './types';
 
-const MODEL = 'claude-sonnet-4-5';
+// Calling Claude through OpenRouter's OpenAI-compatible API. We already have the
+// OpenAI SDK in the project for Whisper, so we reuse it here pointed at OpenRouter.
+const MODEL = 'anthropic/claude-sonnet-4.5';
 
-let anthropic: Anthropic | null = null;
-function getClient(): Anthropic {
-  if (!anthropic) {
-    const key = process.env.ANTHROPIC_API_KEY;
-    if (!key) throw new Error('ANTHROPIC_API_KEY is not set');
-    anthropic = new Anthropic({ apiKey: key });
+let client: OpenAI | null = null;
+function getClient(): OpenAI {
+  if (!client) {
+    const key = process.env.OPENROUTER_API_KEY;
+    if (!key) throw new Error('OPENROUTER_API_KEY is not set');
+    client = new OpenAI({
+      apiKey: key,
+      baseURL: 'https://openrouter.ai/api/v1',
+      defaultHeaders: {
+        'HTTP-Referer': 'https://github.com/Saketkachchhi/ghost-ta',
+        'X-Title': 'Ghost TA',
+      },
+    });
   }
-  return anthropic;
+  return client;
 }
 
 const SYSTEM_PROMPT = `You are Ghost TA, an AI agent listening to a university lecture in real time.
@@ -46,86 +60,101 @@ Output rules:
 - Cap at 10 concepts per lecture; if you already have 10, replace the
   lowest-emphasis one only if the new concept clearly outranks it.`;
 
-const TOOLS: Anthropic.Tool[] = [
+const TOOLS: ChatCompletionTool[] = [
   {
-    name: 'extract_concepts',
-    description:
-      'Add NEW concepts that have not been seen before in the running study guide. Each concept must include a short definition and an emphasis score 0..1.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        concepts: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              name: { type: 'string' },
-              definition: { type: 'string' },
-              emphasis: { type: 'number', minimum: 0, maximum: 1 },
-              practice_questions: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Optional. Required if emphasis >= 0.6.',
+    type: 'function',
+    function: {
+      name: 'extract_concepts',
+      description:
+        'Add NEW concepts that have not been seen before in the running study guide. Each concept must include a short definition and an emphasis score 0..1.',
+      parameters: {
+        type: 'object',
+        properties: {
+          concepts: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                definition: { type: 'string' },
+                emphasis: { type: 'number', minimum: 0, maximum: 1 },
+                practice_questions: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Optional. Required if emphasis >= 0.6.',
+                },
               },
+              required: ['name', 'definition', 'emphasis'],
             },
-            required: ['name', 'definition', 'emphasis'],
           },
         },
+        required: ['concepts'],
       },
-      required: ['concepts'],
     },
   },
   {
-    name: 'update_concept',
-    description:
-      "Refine an existing concept's definition, bump its emphasis, or add practice questions. Use when the lecture re-emphasizes or expands a concept already in the guide.",
-    input_schema: {
-      type: 'object',
-      properties: {
-        name: { type: 'string', description: 'Must match an existing concept exactly.' },
-        new_definition: { type: 'string' },
-        new_emphasis: { type: 'number', minimum: 0, maximum: 1 },
-        add_practice_questions: { type: 'array', items: { type: 'string' } },
+    type: 'function',
+    function: {
+      name: 'update_concept',
+      description:
+        "Refine an existing concept's definition, bump its emphasis, or add practice questions. Use when the lecture re-emphasizes or expands a concept already in the guide.",
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Must match an existing concept exactly.' },
+          new_definition: { type: 'string' },
+          new_emphasis: { type: 'number', minimum: 0, maximum: 1 },
+          add_practice_questions: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['name'],
       },
-      required: ['name'],
     },
   },
   {
-    name: 'flag_assignment',
-    description:
-      'Record an assignment, project, or problem set explicitly mentioned by the professor.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        title: { type: 'string' },
-        due_date: { type: 'string', description: 'ISO format YYYY-MM-DD.' },
-        requirements: { type: 'array', items: { type: 'string' } },
-        source_quote: { type: 'string', description: 'Verbatim quote from the transcript.' },
+    type: 'function',
+    function: {
+      name: 'flag_assignment',
+      description:
+        'Record an assignment, project, or problem set explicitly mentioned by the professor.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          due_date: { type: 'string', description: 'ISO format YYYY-MM-DD.' },
+          requirements: { type: 'array', items: { type: 'string' } },
+          source_quote: { type: 'string', description: 'Verbatim quote from the transcript.' },
+        },
+        required: ['title', 'due_date', 'source_quote'],
       },
-      required: ['title', 'due_date', 'source_quote'],
     },
   },
   {
-    name: 'flag_unclear',
-    description:
-      'Mark a passage that was rushed or ambiguous as a question to ask in office hours.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        passage: { type: 'string' },
-        drafted_question: { type: 'string' },
+    type: 'function',
+    function: {
+      name: 'flag_unclear',
+      description:
+        'Mark a passage that was rushed or ambiguous as a question to ask in office hours.',
+      parameters: {
+        type: 'object',
+        properties: {
+          passage: { type: 'string' },
+          drafted_question: { type: 'string' },
+        },
+        required: ['passage', 'drafted_question'],
       },
-      required: ['passage', 'drafted_question'],
     },
   },
   {
-    name: 'set_topic_summary',
-    description:
-      "Update the one-sentence topic summary for the entire lecture. Call sparingly — only when you have new evidence the topic is different from what's currently set.",
-    input_schema: {
-      type: 'object',
-      properties: { text: { type: 'string' } },
-      required: ['text'],
+    type: 'function',
+    function: {
+      name: 'set_topic_summary',
+      description:
+        "Update the one-sentence topic summary for the entire lecture. Call sparingly — only when you have new evidence the topic is different from what's currently set.",
+      parameters: {
+        type: 'object',
+        properties: { text: { type: 'string' } },
+        required: ['text'],
+      },
     },
   },
 ];
@@ -155,7 +184,7 @@ export async function processChunk(
   const session = getSession(sessionId);
   if (!session) return;
 
-  const client = getClient();
+  const openai = getClient();
 
   const userMsg = `Chunk ${chunkIndex + 1} of ${session.chunks_total}.
 
@@ -169,40 +198,60 @@ ${snapshotForPrompt(session)}
 
 Decide which tools to call for this chunk. Stop calling tools when you have nothing to add.`;
 
-  const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userMsg }];
+  const messages: ChatCompletionMessageParam[] = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'user', content: userMsg },
+  ];
 
   // Tool-use loop. Cap at a few iterations per chunk to bound latency.
   for (let i = 0; i < 4; i++) {
-    const response = await client.messages.create({
+    const response = await openai.chat.completions.create({
       model: MODEL,
       max_tokens: 1500,
-      system: SYSTEM_PROMPT,
-      tools: TOOLS,
       messages,
+      tools: TOOLS,
+      tool_choice: 'auto',
     });
 
-    const toolUses = response.content.filter(
-      (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
-    );
+    const choice = response.choices[0];
+    const toolCalls = choice?.message?.tool_calls ?? [];
 
-    if (toolUses.length === 0 || response.stop_reason !== 'tool_use') {
+    if (toolCalls.length === 0 || choice.finish_reason !== 'tool_calls') {
       break;
     }
 
-    // Apply each tool call and feed back synthetic tool_result blocks.
-    const toolResults: Anthropic.ToolResultBlockParam[] = [];
-    for (const t of toolUses) {
-      const result = applyTool(sessionId, chunkIndex, t.name, t.input);
-      toolResults.push({
-        type: 'tool_result',
-        tool_use_id: t.id,
+    // Append the assistant message (with tool_calls) so the model can see its own decisions.
+    messages.push({
+      role: 'assistant',
+      content: choice.message.content ?? '',
+      tool_calls: toolCalls,
+    });
+
+    // Apply each tool call and feed back the result as a 'tool' role message.
+    for (const t of toolCalls) {
+      const result = applyToolCall(sessionId, chunkIndex, t);
+      messages.push({
+        role: 'tool',
+        tool_call_id: t.id,
         content: result,
       });
     }
-
-    messages.push({ role: 'assistant', content: response.content });
-    messages.push({ role: 'user', content: toolResults });
   }
+}
+
+function applyToolCall(
+  sessionId: string,
+  chunkIndex: number,
+  call: ChatCompletionMessageToolCall,
+): string {
+  if (call.type !== 'function') return `unsupported tool type: ${call.type}`;
+  let input: unknown;
+  try {
+    input = JSON.parse(call.function.arguments || '{}');
+  } catch {
+    return `invalid JSON arguments for ${call.function.name}`;
+  }
+  return applyTool(sessionId, chunkIndex, call.function.name, input);
 }
 
 function applyTool(
