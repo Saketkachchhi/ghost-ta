@@ -43,13 +43,15 @@ export default function AudioUploader({ onSelect, disabled }: Props) {
       >
         <Upload className="mb-2 size-6 text-muted-foreground" />
         <p className="text-sm text-foreground">
-          {filename ?? "Drop a lecture audio file"}
+          {filename ?? "Drop a lecture audio or video file"}
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">.mp3 / .wav / .m4a</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          .mp3 / .wav / .m4a · .mp4 / .mov (Zoom recordings)
+        </p>
         <input
           ref={inputRef}
           type="file"
-          accept="audio/*"
+          accept="audio/*,video/mp4,video/quicktime,video/webm,video/x-matroska"
           className="hidden"
           onChange={(e) => handleFile(e.target.files?.[0] ?? undefined)}
           disabled={disabled}

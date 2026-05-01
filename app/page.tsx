@@ -7,7 +7,7 @@ import ConceptCard from "@/components/ConceptCard";
 import AssignmentCard from "@/components/AssignmentCard";
 import QuestionList from "@/components/QuestionList";
 import ExportBar from "@/components/ExportBar";
-import AudioPlayer from "@/components/AudioPlayer";
+import MediaPlayer from "@/components/MediaPlayer";
 import LanguageSelector from "@/components/LanguageSelector";
 import TranscriptSheet from "@/components/TranscriptSheet";
 import { Separator } from "@/components/ui/separator";
@@ -35,11 +35,12 @@ export default function HomePage() {
     { chunk_index: number; text: string }[]
   >([]);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [mediaKind, setMediaKind] = useState<"audio" | "video">("audio");
   const [sourceLanguage, setSourceLanguage] = useState<string>("auto");
   const [targetLanguage, setTargetLanguage] = useState<string>("en");
   const [printing, setPrinting] = useState(false);
   const esRef = useRef<EventSource | null>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRef = useRef<HTMLMediaElement>(null);
 
   // Expand all cards, wait a frame for the DOM to update, open the print
   // dialog, then collapse back to the user's prior state.
@@ -138,10 +139,16 @@ export default function HomePage() {
   async function handleUpload(file: File) {
     resetState();
     setStatus("uploading");
-    // Build a playable URL for the audio player. Bundled-demo files come in
+    // Build a playable URL for the player. Bundled-demo files come in
     // with name "demo_lecture.mp3" — we can serve them straight from /public
-    // so the <audio> tag streams a real file. Anything else we wrap in a
-    // Blob URL so the browser plays it back from memory.
+    // so the player streams a real file. Anything else we wrap in a
+    // Blob URL so the browser plays it back from memory. Detect kind from
+    // MIME type / extension so we render <video> for Zoom MP4s (judges see
+    // the lecturer + slides) and <audio> for plain audio.
+    const isVideo =
+      file.type.startsWith("video/") ||
+      /\.(mp4|mov|webm|mkv|avi)$/i.test(file.name);
+    setMediaKind(isVideo ? "video" : "audio");
     if (file.name === "demo_lecture.mp3") {
       setAudioUrl("/demo_lecture.mp3");
     } else {
@@ -173,6 +180,7 @@ export default function HomePage() {
     setTranscriptChunks([]);
     if (audioUrl?.startsWith("blob:")) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
+    setMediaKind("audio");
   }
 
   const sortedConcepts = [...concepts].sort((a, b) => b.emphasis - a.emphasis);
@@ -256,7 +264,7 @@ export default function HomePage() {
             chunksTotal={chunksTotal}
             error={error}
           />
-          <AudioPlayer ref={audioRef} src={audioUrl} />
+          <MediaPlayer ref={audioRef} src={audioUrl} kind={mediaKind} />
           {topicSummary && (
             <div className="rounded-lg border border-border bg-card p-3 text-sm text-foreground">
               <div className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
