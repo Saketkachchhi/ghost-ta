@@ -1,3 +1,7 @@
+// Chunk size in seconds — used to convert first_seen_chunk into a real-time
+// timestamp for the audio player. Must match CHUNK_SECONDS in app/api/upload/route.ts.
+export const CHUNK_SECONDS = 60;
+
 export type Concept = {
   id: string;
   name: string;

@@ -50,11 +50,19 @@ export async function POST(req: Request) {
   return NextResponse.json({ session_id: id });
 }
 
+// Parallel Whisper transcription, sequential agent processing.
+// Whisper is independent per chunk; the agent depends on the running guide
+// state so it must be sequential. Pipeline: while N transcripts run in
+// parallel, the agent walks chunks in order and waits when transcripts
+// haven't arrived yet.
+const TRANSCRIPTION_CONCURRENCY = 4;
+const CHUNK_SECONDS = 60;
+
 async function runPipeline(sessionId: string, audioPath: string, workDir: string) {
   updateSession(sessionId, { status: 'processing' });
   emit(sessionId, { type: 'status', status: 'processing', chunks_done: 0, chunks_total: 0 });
 
-  const chunks = await chunkAudio(audioPath, join(workDir, 'chunks'), 30);
+  const chunks = await chunkAudio(audioPath, join(workDir, 'chunks'), CHUNK_SECONDS);
   updateSession(sessionId, { chunks_total: chunks.length });
   emit(sessionId, {
     type: 'status',
@@ -63,26 +71,49 @@ async function runPipeline(sessionId: string, audioPath: string, workDir: string
     chunks_total: chunks.length,
   });
 
-  for (let i = 0; i < chunks.length; i++) {
-    const text = await transcribeChunk(chunks[i]);
-    const session = getSession(sessionId);
-    if (!session) return;
-    const transcript_so_far = session.transcript_so_far
-      ? `${session.transcript_so_far}\n${text}`
-      : text;
-    updateSession(sessionId, { transcript_so_far });
-    emit(sessionId, { type: 'transcript', chunk_index: i, text });
+  const transcripts: (string | undefined)[] = new Array(chunks.length);
 
-    await processChunk(sessionId, i, text);
+  // N parallel Whisper workers, each pulling the next un-claimed chunk.
+  let nextToTranscribe = 0;
+  const transcribeWorkers = Array.from(
+    { length: Math.min(TRANSCRIPTION_CONCURRENCY, chunks.length) },
+    async () => {
+      while (true) {
+        const i = nextToTranscribe++;
+        if (i >= chunks.length) return;
+        const text = await transcribeChunk(chunks[i]);
+        transcripts[i] = text;
+        emit(sessionId, { type: 'transcript', chunk_index: i, text });
+      }
+    },
+  );
 
-    updateSession(sessionId, { chunks_done: i + 1 });
-    emit(sessionId, {
-      type: 'status',
-      status: 'processing',
-      chunks_done: i + 1,
-      chunks_total: chunks.length,
-    });
-  }
+  // Single agent loop walking chunks in order, polling for transcripts.
+  const agentLoop = (async () => {
+    for (let i = 0; i < chunks.length; i++) {
+      while (transcripts[i] === undefined) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      const session = getSession(sessionId);
+      if (!session) return;
+      const transcript_so_far = session.transcript_so_far
+        ? `${session.transcript_so_far}\n${transcripts[i]}`
+        : transcripts[i]!;
+      updateSession(sessionId, { transcript_so_far });
+
+      await processChunk(sessionId, i, transcripts[i]!);
+
+      updateSession(sessionId, { chunks_done: i + 1 });
+      emit(sessionId, {
+        type: 'status',
+        status: 'processing',
+        chunks_done: i + 1,
+        chunks_total: chunks.length,
+      });
+    }
+  })();
+
+  await Promise.all([...transcribeWorkers, agentLoop]);
 
   updateSession(sessionId, { status: 'done' });
   emit(sessionId, { type: 'done' });

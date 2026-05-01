@@ -7,6 +7,7 @@ import ConceptCard from "@/components/ConceptCard";
 import AssignmentCard from "@/components/AssignmentCard";
 import QuestionList from "@/components/QuestionList";
 import ExportBar from "@/components/ExportBar";
+import AudioPlayer from "@/components/AudioPlayer";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type {
@@ -28,7 +29,18 @@ export default function HomePage() {
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [questions, setQuestions] = useState<FlaggedQuestion[]>([]);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const esRef = useRef<EventSource | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  function jumpTo(seconds: number) {
+    const a = audioRef.current;
+    if (!a) return;
+    a.currentTime = seconds;
+    void a.play().catch(() => {
+      /* user gesture missing — ignore */
+    });
+  }
 
   function handleEvent(event: StreamEvent) {
     switch (event.type) {
@@ -91,6 +103,15 @@ export default function HomePage() {
   async function handleUpload(file: File) {
     resetState();
     setStatus("uploading");
+    // Build a playable URL for the audio player. Bundled-demo files come in
+    // with name "demo_lecture.mp3" — we can serve them straight from /public
+    // so the <audio> tag streams a real file. Anything else we wrap in a
+    // Blob URL so the browser plays it back from memory.
+    if (file.name === "demo_lecture.mp3") {
+      setAudioUrl("/demo_lecture.mp3");
+    } else {
+      setAudioUrl(URL.createObjectURL(file));
+    }
     const fd = new FormData();
     fd.append("audio", file);
     try {
@@ -112,6 +133,8 @@ export default function HomePage() {
     setConcepts([]);
     setAssignments([]);
     setQuestions([]);
+    if (audioUrl?.startsWith("blob:")) URL.revokeObjectURL(audioUrl);
+    setAudioUrl(null);
   }
 
   const sortedConcepts = [...concepts].sort((a, b) => b.emphasis - a.emphasis);
@@ -143,6 +166,7 @@ export default function HomePage() {
             chunksTotal={chunksTotal}
             error={error}
           />
+          <AudioPlayer ref={audioRef} src={audioUrl} />
           {topicSummary && (
             <div className="rounded-lg border border-border bg-card p-3 text-sm text-foreground">
               <div className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
@@ -164,7 +188,7 @@ export default function HomePage() {
               {sortedConcepts.length === 1 ? "" : "s"}
             </span>
           </div>
-          <ScrollArea className="flex-1 px-6 py-4">
+          <ScrollArea className="min-h-0 flex-1 px-6 py-4">
             {sortedConcepts.length === 0 && status !== "processing" && (
               <p className="mt-12 text-center text-sm text-muted-foreground">
                 Upload a lecture to begin. Concepts and exam predictions will
@@ -181,7 +205,11 @@ export default function HomePage() {
             )}
             <div className="space-y-3">
               {sortedConcepts.map((c) => (
-                <ConceptCard key={c.id} concept={c} />
+                <ConceptCard
+                  key={c.id}
+                  concept={c}
+                  onJumpTo={audioUrl ? jumpTo : undefined}
+                />
               ))}
             </div>
           </ScrollArea>
@@ -198,7 +226,7 @@ export default function HomePage() {
                 {assignments.length}
               </span>
             </div>
-            <ScrollArea className="flex-1 px-5 pb-4">
+            <ScrollArea className="min-h-0 flex-1 px-5 pb-4">
               <div className="space-y-2">
                 {assignments.length === 0 && (
                   <p className="mt-2 text-xs text-muted-foreground">
@@ -226,7 +254,7 @@ export default function HomePage() {
                 {questions.length}
               </span>
             </div>
-            <ScrollArea className="flex-1 px-5 pb-4">
+            <ScrollArea className="min-h-0 flex-1 px-5 pb-4">
               <QuestionList questions={questions} />
             </ScrollArea>
           </div>

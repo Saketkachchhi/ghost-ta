@@ -2,15 +2,27 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, PlayCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Concept } from "@/lib/types";
+import { CHUNK_SECONDS, type Concept } from "@/lib/types";
 
-export default function ConceptCard({ concept }: { concept: Concept }) {
+type Props = {
+  concept: Concept;
+  onJumpTo?: (seconds: number) => void;
+};
+
+function formatMmSs(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+export default function ConceptCard({ concept, onJumpTo }: Props) {
   const [open, setOpen] = useState(false);
   const pct = Math.round(concept.emphasis * 100);
   const high = concept.emphasis >= 0.75;
   const med = concept.emphasis >= 0.5 && !high;
+  const timestamp = concept.first_seen_chunk * CHUNK_SECONDS;
 
   return (
     <motion.div
@@ -25,6 +37,7 @@ export default function ConceptCard({ concept }: { concept: Concept }) {
       )}
     >
       <button
+        type="button"
         className="flex w-full items-start justify-between gap-3 text-left"
         onClick={() => setOpen((o) => !o)}
       >
@@ -36,6 +49,28 @@ export default function ConceptCard({ concept }: { concept: Concept }) {
               <ChevronRight className="size-4 text-muted-foreground" />
             )}
             <h3 className="font-semibold text-foreground">{concept.name}</h3>
+            {onJumpTo && (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onJumpTo(timestamp);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onJumpTo(timestamp);
+                  }
+                }}
+                className="ml-1 inline-flex cursor-pointer items-center gap-1 rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground hover:border-emerald-500/60 hover:text-emerald-500"
+                title="Jump to this moment in the lecture"
+              >
+                <PlayCircle className="size-2.5" />
+                {formatMmSs(timestamp)}
+              </span>
+            )}
           </div>
           <p className="mt-1 pl-6 text-sm text-muted-foreground">
             {concept.definition}

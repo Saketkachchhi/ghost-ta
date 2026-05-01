@@ -207,7 +207,7 @@ Decide which tools to call for this chunk. Stop calling tools when you have noth
   for (let i = 0; i < 4; i++) {
     const response = await openai.chat.completions.create({
       model: MODEL,
-      max_tokens: 1500,
+      max_tokens: 1000,
       messages,
       tools: TOOLS,
       tool_choice: 'auto',
