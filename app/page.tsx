@@ -9,6 +9,7 @@ import QuestionList from "@/components/QuestionList";
 import ExportBar from "@/components/ExportBar";
 import AudioPlayer from "@/components/AudioPlayer";
 import LanguageSelector from "@/components/LanguageSelector";
+import TranscriptSheet from "@/components/TranscriptSheet";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type {
@@ -30,6 +31,9 @@ export default function HomePage() {
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [questions, setQuestions] = useState<FlaggedQuestion[]>([]);
+  const [transcriptChunks, setTranscriptChunks] = useState<
+    { chunk_index: number; text: string }[]
+  >([]);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [sourceLanguage, setSourceLanguage] = useState<string>("auto");
   const [targetLanguage, setTargetLanguage] = useState<string>("en");
@@ -64,6 +68,21 @@ export default function HomePage() {
         setStatus(event.status === "done" ? "done" : "processing");
         setChunksDone(event.chunks_done);
         setChunksTotal(event.chunks_total);
+        break;
+      case "transcript":
+        setTranscriptChunks((prev) => {
+          // Replace if we somehow get a duplicate chunk_index (shouldn't, but
+          // guards against double-mounted EventSource in React StrictMode dev).
+          const existing = prev.findIndex(
+            (c) => c.chunk_index === event.chunk_index,
+          );
+          if (existing !== -1) {
+            const copy = prev.slice();
+            copy[existing] = { chunk_index: event.chunk_index, text: event.text };
+            return copy;
+          }
+          return [...prev, { chunk_index: event.chunk_index, text: event.text }];
+        });
         break;
       case "concept":
         setConcepts((prev) => [...prev, event.concept]);
@@ -151,6 +170,7 @@ export default function HomePage() {
     setConcepts([]);
     setAssignments([]);
     setQuestions([]);
+    setTranscriptChunks([]);
     if (audioUrl?.startsWith("blob:")) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
   }
@@ -190,11 +210,18 @@ export default function HomePage() {
             </span>
           )}
         </div>
-        <ExportBar
-          sessionId={sessionId}
-          canExport={status === "done"}
-          onPrintPdf={exportPdf}
-        />
+        <div className="flex items-center gap-2">
+          <TranscriptSheet
+            chunks={transcriptChunks}
+            isLive={status === "processing"}
+            onJumpTo={audioUrl ? jumpTo : undefined}
+          />
+          <ExportBar
+            sessionId={sessionId}
+            canExport={status === "done"}
+            onPrintPdf={exportPdf}
+          />
+        </div>
       </header>
 
       {/* Print-only header — hidden on screen, visible in PDF. */}
