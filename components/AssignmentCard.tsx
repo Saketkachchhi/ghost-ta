@@ -38,8 +38,10 @@ export default function AssignmentCard({
       transition={{ duration: 0.3 }}
       data-print-section
       className={cn(
-        "rounded-lg border bg-card p-3",
-        soon ? "border-amber-500/50" : "border-border",
+        "rounded-lg border bg-card p-3 transition-all duration-200 hover:-translate-y-0.5",
+        soon
+          ? "border-amber-500/50 shadow-[0_0_16px_-8px] shadow-amber-500/40 hover:shadow-amber-500/60"
+          : "border-border hover:border-emerald-500/40",
       )}
     >
       <div className="flex items-start justify-between gap-2">

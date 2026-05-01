@@ -33,12 +33,17 @@ export default function ConceptCard({ concept, onJumpTo, forceOpen }: Props) {
       transition={{ duration: 0.25 }}
       data-print-section
       className={cn(
-        "rounded-lg border bg-card p-4",
-        high && "border-emerald-500/50",
-        med && "border-amber-500/40",
-        !high && !med && "border-border",
+        "group relative overflow-hidden rounded-lg border bg-card p-4 transition-all duration-200 hover:-translate-y-0.5 hover:bg-card/80",
+        high &&
+          "border-emerald-500/50 shadow-[0_0_24px_-12px] shadow-emerald-500/40 hover:shadow-emerald-500/60",
+        med && "border-amber-500/40 hover:border-amber-500/60",
+        !high && !med && "border-border hover:border-border/80",
       )}
     >
+      {/* Subtle gradient accent on high-emphasis cards */}
+      {high && (
+        <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl" />
+      )}
       <button
         type="button"
         className="flex w-full items-start justify-between gap-3 text-left"

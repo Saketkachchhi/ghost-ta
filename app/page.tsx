@@ -186,21 +186,34 @@ export default function HomePage() {
   const sortedConcepts = [...concepts].sort((a, b) => b.emphasis - a.emphasis);
 
   return (
-    <main className="mx-auto flex h-screen w-full max-w-[1600px] flex-col">
+    <main className="relative mx-auto flex h-screen w-full max-w-[1600px] flex-col">
+      {/* Ambient page-level gradient orbs — sit behind everything, screen blend */}
+      <div
+        className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+        aria-hidden
+      >
+        <div className="absolute -left-40 top-0 h-[400px] w-[400px] rounded-full bg-emerald-500/10 blur-[120px]" />
+        <div className="absolute -right-40 bottom-0 h-[400px] w-[400px] rounded-full bg-teal-500/8 blur-[120px]" />
+      </div>
       <header
-        className="flex items-center justify-between border-b border-border bg-gradient-to-b from-background to-card/40 px-6 py-4"
+        className="relative flex items-center justify-between border-b border-border bg-gradient-to-b from-background via-background to-card/30 px-6 py-4"
         data-print-hide
       >
-        <div className="flex items-baseline gap-3">
+        {/* Subtle emerald glow behind the brand */}
+        <div className="pointer-events-none absolute -left-12 top-0 h-32 w-64 bg-emerald-500/10 blur-3xl" />
+        <div className="relative flex items-baseline gap-3">
           <div className="flex items-baseline gap-2">
-            <h1 className="font-mono text-xl tracking-tight text-emerald-500">
-              ghost<span className="text-foreground">/ta</span>
+            <h1 className="font-mono text-xl tracking-tight">
+              <span className="bg-gradient-to-r from-emerald-400 via-emerald-300 to-teal-300 bg-clip-text text-transparent">
+                ghost
+              </span>
+              <span className="text-foreground/90">/ta</span>
             </h1>
             <span className="hidden font-mono text-[10px] uppercase tracking-widest text-muted-foreground sm:inline">
-              v0.1
+              v1.0
             </span>
           </div>
-          <span className="text-xs text-muted-foreground">
+          <span className="hidden text-xs text-muted-foreground md:inline">
             the TA you wish you had
           </span>
           {status === "processing" && (
@@ -266,11 +279,24 @@ export default function HomePage() {
           />
           <MediaPlayer ref={audioRef} src={audioUrl} kind={mediaKind} />
           {topicSummary && (
-            <div className="rounded-lg border border-border bg-card p-3 text-sm text-foreground">
-              <div className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
+            <div className="relative overflow-hidden rounded-lg border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-transparent p-3 text-sm text-foreground">
+              <div className="pointer-events-none absolute -right-6 -top-6 h-16 w-16 rounded-full bg-emerald-500/10 blur-2xl" />
+              <div className="relative mb-1 flex items-center gap-1.5 text-xs uppercase tracking-wide text-emerald-400">
+                <svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 2v4M4.93 4.93l2.83 2.83M2 12h4M4.93 19.07l2.83-2.83M12 18v4M19.07 19.07l-2.83-2.83M22 12h-4M19.07 4.93l-2.83 2.83" />
+                </svg>
                 Lecture topic
               </div>
-              {topicSummary}
+              <div className="relative">{topicSummary}</div>
             </div>
           )}
         </aside>
@@ -288,27 +314,50 @@ export default function HomePage() {
           </div>
           <ScrollArea className="min-h-0 flex-1 px-6 py-4">
             {sortedConcepts.length === 0 && status !== "processing" && (
-              <div className="mt-16 flex flex-col items-center text-center">
-                <div className="mb-4 flex size-14 items-center justify-center rounded-full border border-border bg-card">
+              <div className="relative mx-auto mt-12 flex max-w-md flex-col items-center text-center">
+                {/* Big radial glow behind the hero */}
+                <div className="pointer-events-none absolute -inset-x-32 -top-12 h-72 bg-gradient-to-b from-emerald-500/15 via-emerald-500/5 to-transparent blur-3xl" />
+                <div className="relative mb-6 flex size-20 items-center justify-center rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-emerald-500/0 shadow-[0_0_60px_-12px] shadow-emerald-500/30">
                   <svg
-                    width="22"
-                    height="22"
+                    width="32"
+                    height="32"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="1.6"
+                    strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="text-muted-foreground"
+                    className="text-emerald-400"
                   >
-                    <path d="M3 12c0-3.5 3-6 9-6s9 2.5 9 6" />
-                    <path d="M3 12c0 3.5 3 6 9 6s9-2.5 9-6" />
-                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <path d="M9 18V5l12-2v13" />
+                    <circle cx="6" cy="18" r="3" />
+                    <circle cx="18" cy="16" r="3" />
                   </svg>
                 </div>
-                <p className="max-w-xs text-sm text-muted-foreground">
-                  Upload a lecture to begin. Concepts, exam predictions, and
-                  assignments will materialize here as the agent listens.
+                <h2 className="relative mb-2 bg-gradient-to-b from-foreground to-foreground/70 bg-clip-text font-mono text-3xl tracking-tight text-transparent">
+                  Drop a lecture in.
+                </h2>
+                <p className="relative mb-6 text-sm text-muted-foreground">
+                  Ghost TA listens, scores professor emphasis, and writes a
+                  predictive study guide before the lecture ends.
+                </p>
+                <div className="relative grid w-full grid-cols-3 gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <div className="rounded-md border border-border bg-card/60 px-2 py-2 text-center">
+                    <div className="font-mono text-base text-emerald-400">16</div>
+                    <div>languages</div>
+                  </div>
+                  <div className="rounded-md border border-border bg-card/60 px-2 py-2 text-center">
+                    <div className="font-mono text-base text-emerald-400">5</div>
+                    <div>tools</div>
+                  </div>
+                  <div className="rounded-md border border-border bg-card/60 px-2 py-2 text-center">
+                    <div className="font-mono text-base text-emerald-400">4×</div>
+                    <div>parallel</div>
+                  </div>
+                </div>
+                <p className="relative mt-6 text-[11px] text-muted-foreground/70">
+                  Drag any audio (.mp3, .wav, .m4a) or video (.mp4, .mov)
+                  file into the upload zone on the left.
                 </p>
               </div>
             )}
@@ -385,6 +434,28 @@ export default function HomePage() {
           </div>
         </aside>
       </section>
+
+      {/* Footer — small team credit, hidden in print */}
+      <footer
+        className="flex items-center justify-between border-t border-border bg-gradient-to-t from-card/30 to-background px-6 py-2 text-[10px] text-muted-foreground"
+        data-print-hide
+      >
+        <div className="flex items-center gap-2">
+          <span className="font-mono uppercase tracking-widest">
+            Spy-Hacks 2026
+          </span>
+          <span className="text-muted-foreground/50">·</span>
+          <span>Stevens Institute of Technology</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span>Built by</span>
+          <span className="font-medium text-foreground/80">Aditya</span>
+          <span className="text-muted-foreground/50">·</span>
+          <span className="font-medium text-foreground/80">Jeel</span>
+          <span className="text-muted-foreground/50">·</span>
+          <span className="font-medium text-foreground/80">Saket</span>
+        </div>
+      </footer>
     </main>
   );
 }
