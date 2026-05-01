@@ -11,6 +11,7 @@ import MediaPlayer from "@/components/MediaPlayer";
 import LanguageSelector from "@/components/LanguageSelector";
 import TranscriptSheet from "@/components/TranscriptSheet";
 import StatsBanner from "@/components/StatsBanner";
+import QuizGuard from "@/components/QuizGuard";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -41,7 +42,23 @@ export default function HomePage() {
   const [sourceLanguage, setSourceLanguage] = useState<string>("auto");
   const [targetLanguage, setTargetLanguage] = useState<string>("en");
   const [printing, setPrinting] = useState(false);
-  const [quizMode, setQuizMode] = useState(false);
+  // Quiz state — single source of truth in page.tsx, QuizGuard renders.
+  // 'off'        idle, no quiz UI
+  // 'consent'    showing the integrity contract dialog
+  // 'active'     quiz running, anti-cheat listeners armed
+  // 'terminated' user violated integrity rules; show debrief overlay
+  const [quizPhase, setQuizPhase] = useState<
+    "off" | "consent" | "active" | "terminated"
+  >("off");
+  const [quizStartedAt, setQuizStartedAt] = useState<number | null>(null);
+  const [quizEndedAt, setQuizEndedAt] = useState<number | null>(null);
+  const [quizTerminationReason, setQuizTerminationReason] = useState<
+    string | null
+  >(null);
+  const [revealedConceptIds, setRevealedConceptIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const quizActive = quizPhase === "active";
   const [processingStartedAt, setProcessingStartedAt] = useState<number | null>(null);
   const [processingEndedAt, setProcessingEndedAt] = useState<number | null>(null);
   const esRef = useRef<EventSource | null>(null);
@@ -198,6 +215,11 @@ export default function HomePage() {
     setTranscriptChunks([]);
     setProcessingStartedAt(null);
     setProcessingEndedAt(null);
+    setQuizPhase("off");
+    setQuizStartedAt(null);
+    setQuizEndedAt(null);
+    setQuizTerminationReason(null);
+    setRevealedConceptIds(new Set());
     if (audioUrl?.startsWith("blob:")) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
     setMediaKind("audio");
@@ -333,17 +355,29 @@ export default function HomePage() {
               {sortedConcepts.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => setQuizMode((q) => !q)}
+                  onClick={() => {
+                    if (quizPhase === "active") {
+                      // End cleanly (no termination overlay).
+                      setQuizPhase("off");
+                      setQuizStartedAt(null);
+                      setQuizEndedAt(null);
+                      setRevealedConceptIds(new Set());
+                    } else if (quizPhase === "off") {
+                      // Open the consent dialog.
+                      setQuizPhase("consent");
+                    }
+                    // If 'consent' or 'terminated', the dialog handles itself.
+                  }}
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                    quizMode
+                    quizActive
                       ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-300"
                       : "border-border bg-card text-muted-foreground hover:border-emerald-500/40 hover:text-foreground",
                   )}
                   title={
-                    quizMode
-                      ? "Exit quiz mode — show all definitions"
-                      : "Hide definitions and quiz yourself on the practice questions"
+                    quizActive
+                      ? "End quiz — show all definitions"
+                      : "Proctored: hide definitions and quiz yourself on the practice questions. Leaving the tab ends the quiz."
                   }
                 >
                   <svg
@@ -360,7 +394,7 @@ export default function HomePage() {
                     <line x1="12" y1="17" x2="12.01" y2="17" />
                     <circle cx="12" cy="12" r="10" />
                   </svg>
-                  {quizMode ? "Quiz on" : "Quiz me"}
+                  {quizActive ? "End quiz" : "Quiz me"}
                 </button>
               )}
               <span className="text-xs text-muted-foreground">
@@ -446,6 +480,35 @@ export default function HomePage() {
                 targetLanguage={targetLanguage}
               />
             )}
+            <QuizGuard
+              phase={quizPhase}
+              totalConcepts={sortedConcepts.length}
+              revealedCount={revealedConceptIds.size}
+              startedAt={quizStartedAt}
+              endedAt={quizEndedAt}
+              terminationReason={quizTerminationReason}
+              onAccept={() => {
+                setRevealedConceptIds(new Set());
+                setQuizStartedAt(Date.now());
+                setQuizEndedAt(null);
+                setQuizPhase("active");
+              }}
+              onDecline={() => {
+                setQuizPhase("off");
+              }}
+              onTerminate={(reason) => {
+                setQuizPhase("terminated");
+                setQuizEndedAt(Date.now());
+                setQuizTerminationReason(reason);
+                setRevealedConceptIds(new Set());
+              }}
+              onAcknowledge={() => {
+                setQuizPhase("off");
+                setQuizStartedAt(null);
+                setQuizEndedAt(null);
+                setQuizTerminationReason(null);
+              }}
+            />
             <div className="space-y-3">
               {sortedConcepts.map((c) => (
                 <ConceptCard
@@ -453,7 +516,11 @@ export default function HomePage() {
                   concept={c}
                   onJumpTo={audioUrl ? jumpTo : undefined}
                   forceOpen={printing}
-                  quizMode={quizMode}
+                  quizMode={quizActive}
+                  isRevealed={revealedConceptIds.has(c.id)}
+                  onReveal={(id) =>
+                    setRevealedConceptIds((prev) => new Set(prev).add(id))
+                  }
                 />
               ))}
             </div>

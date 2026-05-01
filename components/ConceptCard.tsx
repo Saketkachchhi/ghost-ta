@@ -11,6 +11,10 @@ type Props = {
   onJumpTo?: (seconds: number) => void;
   forceOpen?: boolean;
   quizMode?: boolean;
+  // Lifted reveal state — page.tsx owns it so quiz progress + reset
+  // can reach across all cards.
+  isRevealed?: boolean;
+  onReveal?: (conceptId: string) => void;
 };
 
 function formatMmSs(seconds: number): string {
@@ -24,13 +28,16 @@ export default function ConceptCard({
   onJumpTo,
   forceOpen,
   quizMode,
+  isRevealed,
+  onReveal,
 }: Props) {
   const [openState, setOpen] = useState(false);
-  const [revealed, setRevealed] = useState(false);
   const open = forceOpen || openState;
-  // In quiz mode, the definition is hidden until the user clicks "Reveal".
-  // forceOpen (used during PDF print) overrides this.
-  const showDefinition = !quizMode || revealed || forceOpen;
+  // In quiz mode the definition is hidden until the user reveals it. State
+  // is lifted to page.tsx (via isRevealed/onReveal) so quiz progress and
+  // termination logic can reach across all cards. forceOpen (used during
+  // PDF print) overrides this.
+  const showDefinition = !quizMode || isRevealed || forceOpen;
   const pct = Math.round(concept.emphasis * 100);
   const high = concept.emphasis >= 0.75;
   const med = concept.emphasis >= 0.5 && !high;
@@ -146,12 +153,12 @@ export default function ConceptCard({
         </p>
       )}
 
-      {quizMode && !revealed && !forceOpen && (
+      {quizMode && !isRevealed && !forceOpen && (
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            setRevealed(true);
+            onReveal?.(concept.id);
           }}
           className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400 transition-colors hover:border-emerald-400 hover:bg-emerald-500/20"
         >
