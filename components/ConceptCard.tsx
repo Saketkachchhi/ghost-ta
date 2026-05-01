@@ -10,6 +10,7 @@ type Props = {
   concept: Concept;
   onJumpTo?: (seconds: number) => void;
   forceOpen?: boolean;
+  quizMode?: boolean;
 };
 
 function formatMmSs(seconds: number): string {
@@ -18,9 +19,18 @@ function formatMmSs(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function ConceptCard({ concept, onJumpTo, forceOpen }: Props) {
+export default function ConceptCard({
+  concept,
+  onJumpTo,
+  forceOpen,
+  quizMode,
+}: Props) {
   const [openState, setOpen] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const open = forceOpen || openState;
+  // In quiz mode, the definition is hidden until the user clicks "Reveal".
+  // forceOpen (used during PDF print) overrides this.
+  const showDefinition = !quizMode || revealed || forceOpen;
   const pct = Math.round(concept.emphasis * 100);
   const high = concept.emphasis >= 0.75;
   const med = concept.emphasis >= 0.5 && !high;
@@ -72,17 +82,23 @@ export default function ConceptCard({ concept, onJumpTo, forceOpen }: Props) {
                     onJumpTo(timestamp);
                   }
                 }}
-                className="ml-1 inline-flex cursor-pointer items-center gap-1 rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground hover:border-emerald-500/60 hover:text-emerald-500"
-                title="Jump to this moment in the lecture"
+                className="ml-1.5 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 font-mono text-xs font-medium text-emerald-400 transition-colors hover:border-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300"
+                title="Jump to this moment in the lecture and play"
               >
-                <PlayCircle className="size-2.5" />
+                <PlayCircle className="size-3.5" />
                 {formatMmSs(timestamp)}
               </span>
             )}
           </div>
-          <p className="mt-1 pl-6 text-sm text-muted-foreground">
-            {concept.definition}
-          </p>
+          {showDefinition ? (
+            <p className="mt-1 pl-6 text-sm text-muted-foreground">
+              {concept.definition}
+            </p>
+          ) : (
+            <p className="mt-1 pl-6 text-sm italic text-muted-foreground/60">
+              Definition hidden — answer the question, then reveal.
+            </p>
+          )}
         </div>
         <div className="flex w-28 flex-shrink-0 flex-col items-end gap-1">
           <span
@@ -128,6 +144,32 @@ export default function ConceptCard({ concept, onJumpTo, forceOpen }: Props) {
         <p className="mt-3 pl-6 text-xs text-muted-foreground">
           No practice questions yet — emphasis is below the threshold.
         </p>
+      )}
+
+      {quizMode && !revealed && !forceOpen && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setRevealed(true);
+          }}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400 transition-colors hover:border-emerald-400 hover:bg-emerald-500/20"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          Reveal definition
+        </button>
       )}
     </motion.div>
   );

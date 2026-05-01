@@ -10,6 +10,8 @@ import ExportBar from "@/components/ExportBar";
 import MediaPlayer from "@/components/MediaPlayer";
 import LanguageSelector from "@/components/LanguageSelector";
 import TranscriptSheet from "@/components/TranscriptSheet";
+import StatsBanner from "@/components/StatsBanner";
+import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type {
@@ -39,6 +41,9 @@ export default function HomePage() {
   const [sourceLanguage, setSourceLanguage] = useState<string>("auto");
   const [targetLanguage, setTargetLanguage] = useState<string>("en");
   const [printing, setPrinting] = useState(false);
+  const [quizMode, setQuizMode] = useState(false);
+  const [processingStartedAt, setProcessingStartedAt] = useState<number | null>(null);
+  const [processingEndedAt, setProcessingEndedAt] = useState<number | null>(null);
   const esRef = useRef<EventSource | null>(null);
   const audioRef = useRef<HTMLMediaElement>(null);
 
@@ -66,6 +71,9 @@ export default function HomePage() {
   function handleEvent(event: StreamEvent) {
     switch (event.type) {
       case "status":
+        if (event.status === "processing" && processingStartedAt === null) {
+          setProcessingStartedAt(Date.now());
+        }
         setStatus(event.status === "done" ? "done" : "processing");
         setChunksDone(event.chunks_done);
         setChunksTotal(event.chunks_total);
@@ -108,6 +116,7 @@ export default function HomePage() {
         break;
       case "done":
         setStatus("done");
+        setProcessingEndedAt(Date.now());
         break;
       case "error":
         setStatus("error");
@@ -134,6 +143,10 @@ export default function HomePage() {
       es.close();
       esRef.current = null;
     };
+    // handleEvent closes over setState updaters which are stable, so we
+    // intentionally don't list it as a dep — re-running this effect on every
+    // render would tear down and reopen the EventSource on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
   async function handleUpload(file: File) {
@@ -183,6 +196,8 @@ export default function HomePage() {
     setAssignments([]);
     setQuestions([]);
     setTranscriptChunks([]);
+    setProcessingStartedAt(null);
+    setProcessingEndedAt(null);
     if (audioUrl?.startsWith("blob:")) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
     setMediaKind("audio");
@@ -314,10 +329,45 @@ export default function HomePage() {
             <h2 className="font-mono text-sm uppercase tracking-wider text-muted-foreground">
               Study guide
             </h2>
-            <span className="text-xs text-muted-foreground">
-              {sortedConcepts.length} concept
-              {sortedConcepts.length === 1 ? "" : "s"}
-            </span>
+            <div className="flex items-center gap-3">
+              {sortedConcepts.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setQuizMode((q) => !q)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                    quizMode
+                      ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-300"
+                      : "border-border bg-card text-muted-foreground hover:border-emerald-500/40 hover:text-foreground",
+                  )}
+                  title={
+                    quizMode
+                      ? "Exit quiz mode — show all definitions"
+                      : "Hide definitions and quiz yourself on the practice questions"
+                  }
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                    <circle cx="12" cy="12" r="10" />
+                  </svg>
+                  {quizMode ? "Quiz on" : "Quiz me"}
+                </button>
+              )}
+              <span className="text-xs text-muted-foreground">
+                {sortedConcepts.length} concept
+                {sortedConcepts.length === 1 ? "" : "s"}
+              </span>
+            </div>
           </div>
           <ScrollArea className="min-h-0 flex-1 px-6 py-4">
             {sortedConcepts.length === 0 && status !== "processing" && (
@@ -382,6 +432,20 @@ export default function HomePage() {
                 </p>
               </div>
             )}
+            {status === "done" && sortedConcepts.length > 0 && (
+              <StatsBanner
+                concepts={concepts}
+                assignments={assignments}
+                questions={questions}
+                processingMs={
+                  processingStartedAt && processingEndedAt
+                    ? processingEndedAt - processingStartedAt
+                    : 0
+                }
+                sourceLanguage={sourceLanguage}
+                targetLanguage={targetLanguage}
+              />
+            )}
             <div className="space-y-3">
               {sortedConcepts.map((c) => (
                 <ConceptCard
@@ -389,6 +453,7 @@ export default function HomePage() {
                   concept={c}
                   onJumpTo={audioUrl ? jumpTo : undefined}
                   forceOpen={printing}
+                  quizMode={quizMode}
                 />
               ))}
             </div>
