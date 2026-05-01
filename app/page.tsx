@@ -160,16 +160,35 @@ export default function HomePage() {
   return (
     <main className="mx-auto flex h-screen w-full max-w-[1600px] flex-col">
       <header
-        className="flex items-center justify-between border-b border-border px-6 py-4"
+        className="flex items-center justify-between border-b border-border bg-gradient-to-b from-background to-card/40 px-6 py-4"
         data-print-hide
       >
         <div className="flex items-baseline gap-3">
-          <h1 className="font-mono text-xl tracking-tight text-emerald-500">
-            ghost<span className="text-foreground">/ta</span>
-          </h1>
+          <div className="flex items-baseline gap-2">
+            <h1 className="font-mono text-xl tracking-tight text-emerald-500">
+              ghost<span className="text-foreground">/ta</span>
+            </h1>
+            <span className="hidden font-mono text-[10px] uppercase tracking-widest text-muted-foreground sm:inline">
+              v0.1
+            </span>
+          </div>
           <span className="text-xs text-muted-foreground">
             the TA you wish you had
           </span>
+          {status === "processing" && (
+            <span className="ml-2 flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-400">
+              <span className="relative flex size-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+                <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+              </span>
+              Listening
+            </span>
+          )}
+          {status === "done" && (
+            <span className="ml-2 rounded-full border border-emerald-500/30 bg-emerald-500/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-400">
+              Complete
+            </span>
+          )}
         </div>
         <ExportBar
           sessionId={sessionId}
@@ -234,18 +253,43 @@ export default function HomePage() {
           </div>
           <ScrollArea className="min-h-0 flex-1 px-6 py-4">
             {sortedConcepts.length === 0 && status !== "processing" && (
-              <p className="mt-12 text-center text-sm text-muted-foreground">
-                Upload a lecture to begin. Concepts and exam predictions will
-                appear here as the agent listens.
-              </p>
+              <div className="mt-16 flex flex-col items-center text-center">
+                <div className="mb-4 flex size-14 items-center justify-center rounded-full border border-border bg-card">
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-muted-foreground"
+                  >
+                    <path d="M3 12c0-3.5 3-6 9-6s9 2.5 9 6" />
+                    <path d="M3 12c0 3.5 3 6 9 6s9-2.5 9-6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                  </svg>
+                </div>
+                <p className="max-w-xs text-sm text-muted-foreground">
+                  Upload a lecture to begin. Concepts, exam predictions, and
+                  assignments will materialize here as the agent listens.
+                </p>
+              </div>
             )}
             {sortedConcepts.length === 0 && status === "processing" && (
-              <p className="mt-12 text-center text-sm text-muted-foreground">
-                Listening
-                <span className="inline-block w-6 text-left">
-                  {".".repeat((chunksDone % 3) + 1)}
-                </span>
-              </p>
+              <div className="mt-16 flex flex-col items-center text-center">
+                <div className="relative mb-4 flex size-14 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/5">
+                  <span className="absolute size-14 animate-ping rounded-full bg-emerald-500/20" />
+                  <span className="relative size-2 rounded-full bg-emerald-500" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Listening to chunk {chunksDone + 1} of {chunksTotal || "?"}…
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground/70">
+                  First concepts appear within ~15 seconds.
+                </p>
+              </div>
             )}
             <div className="space-y-3">
               {sortedConcepts.map((c) => (
