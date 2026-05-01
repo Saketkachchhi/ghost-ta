@@ -123,9 +123,32 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Subtle dot-grid texture sits across the entire page. The dots are
+     * almost invisible at any single point, but over a full screen they
+     * give the dark theme a sense of depth and "honeycomb" structure that
+     * makes it feel like a deliberately designed product, not a default
+     * Tailwind page. Hidden in print. */
+    background-image:
+      radial-gradient(
+        circle at 1px 1px,
+        oklch(1 0 0 / 4%) 1px,
+        transparent 0
+      );
+    background-size: 24px 24px;
+    background-position: 0 0;
   }
   html {
     @apply font-sans;
+  }
+
+  /* Shimmer animation used by the progress bar while processing. */
+  @keyframes ghost-ta-shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
   }
 }
 
@@ -141,6 +164,7 @@
   /* Force light background regardless of dark-mode class. */
   html, body {
     background: white !important;
+    background-image: none !important;
     color: black !important;
   }
 
