@@ -37,11 +37,11 @@
 
 ## 1. Executive summary
 
-Ghost TA is a real-time AI agent that ingests a lecture audio or video file and produces a structured study guide while the lecture is still being processed. It transcribes the audio in 30-second windows via OpenAI Whisper, feeds the transcripts into a Claude Sonnet 4.5 agent loop with five typed tools, and streams every output as a Server-Sent Event to a React UI that visibly writes itself.
+Ghost TA is a real-time AI agent that ingests a lecture audio or video file and produces a structured study guide while the lecture is still being processed. It transcribes the audio in 60-second chunks via OpenAI Whisper (4 parallel workers), feeds the transcripts into a Claude Sonnet 4.5 agent loop with five typed tools, and streams every output as a Server-Sent Event to a React UI that visibly writes itself.
 
 The product spans a multilingual transcription pipeline (16 input + 16 output languages), an embedded media player with click-to-jump from any concept's timestamp, four export formats (Anki flashcards, Markdown, PDF, calendar `.ics` files for assignments), a slide-in transcript drawer, and a proctored "Quiz me" mode with anti-cheat detection that ends the quiz if the student switches tabs or windows.
 
-It was built in 24 hours by three F-1 international graduate students at Stevens Institute of Technology for Spy-Hacks 2026. The architecture is intentionally minimal — Next.js 16 with API routes, in-memory session state, no database — but the surface area is broad: 30+ source files, 8 API routes, 12+ React components, 5 agent tools, 3 export formats, and a complete print stylesheet for paper/PDF.
+It was built in 24 hours by three F-1 international graduate students at Stevens Institute of Technology for Spy-Hacks 2026. The architecture is intentionally minimal — Next.js 16 with API routes, in-memory session state, no database — but the surface area is broad: 30+ source files, 6 API routes, 11+ React components, 5 agent tools, 4 export formats (Markdown, Anki, PDF, .ics), and a complete print stylesheet for paper/PDF.
 
 ---
 

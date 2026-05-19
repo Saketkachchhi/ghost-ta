@@ -462,7 +462,7 @@ export default function HomePage() {
                   Listening to chunk {chunksDone + 1} of {chunksTotal || "?"}…
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground/70">
-                  First concepts appear within ~15 seconds.
+                  First concepts appear within ~10–15 seconds.
                 </p>
               </div>
             )}

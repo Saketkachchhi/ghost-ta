@@ -2,8 +2,13 @@
 
 > **The TA you wish you had** — an autonomous AI agent that listens to your lecture and writes your study guide before class ends.
 
-**Spy-Hacks 2026 · Stevens Institute of Technology · April 30 – May 1, 2026**
-Track: Project Track · Theme: "Agentic AI for Campus Life"
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
+![Claude](https://img.shields.io/badge/Claude-Sonnet%204.5-orange?logo=anthropic)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+**Spy-Hacks 2026 · Stevens Institute of Technology · April 30 – May 1, 2026**  
+Track: Project Track · Theme: "Agentic AI for Campus Life"  
 Team: Aditya Patel · Jeel Patel · Saket Kachchhi
 
 ---
@@ -28,28 +33,26 @@ formulas, code, and proper nouns intact.
 
 ## Demo
 
-| Resource    | Link                                                       |
-| ----------- | ---------------------------------------------------------- |
-| 2-min video | _add YouTube unlisted link before submission_              |
-| Live URL    | _Vercel deployment — set OPENAI_API_KEY + OPENROUTER_API_KEY_ |
-| Source      | https://github.com/Saketkachchhi/ghost-ta                  |
+| Resource    | Link                                                              |
+| ----------- | ----------------------------------------------------------------- |
+| Live URL    | _Deploy to Vercel — add `OPENAI_API_KEY` + `OPENROUTER_API_KEY`_ |
+| Source      | https://github.com/Saketkachchhi/ghost-ta                         |
 
 ---
 
-## What sets it apart (judge-magnets)
+## What sets it apart
 
 1. **Genuinely agentic — not a chatbot, not a transcript tool.**
-   Claude Sonnet 4.5 with tool use. Five tools the agent reasons about which
-   to call per chunk: `extract_concepts`, `update_concept`, `flag_assignment`,
+   Claude Sonnet 4.5 with tool use. Five tools the agent reasons over per
+   60-second chunk: `extract_concepts`, `update_concept`, `flag_assignment`,
    `flag_unclear`, `set_topic_summary`. A confusing passage gets a different
    tool path than a formal definition. A chatbot wouldn't make these decisions.
 
-2. **The .ics calendar export beat.**
+2. **The `.ics` calendar export.**
    When the professor mentions "this is due next Friday," the agent extracts
    title, due date, and requirements as a structured assignment. One click
-   downloads a valid RFC 5545 `.ics` file with a 24-hour reminder. Imports
-   into Google Calendar, Apple Calendar, Outlook — we don't build reminder
-   infrastructure; the calendar already does that.
+   downloads a valid RFC 5545 `.ics` file with a 24-hour reminder — imports
+   into Google Calendar, Apple Calendar, and Outlook.
 
 3. **Click-to-jump audio playback.**
    Every concept card carries the timestamp where it was first detected.
@@ -62,9 +65,14 @@ formulas, code, and proper nouns intact.
    target language; assignment source quotes intentionally stay in the
    lecture's original language so students can find them in the audio.
 
-5. **Real student utility — three export formats.**
+5. **Proctored "Quiz me" mode.**
+   Hides all concept definitions and lets the student work through practice
+   questions. Anti-cheat detection watches for tab switches and window focus
+   loss — violations terminate the quiz and show a debrief overlay.
+
+6. **Three export formats.**
    - **Anki CSV** — concepts and practice questions become flashcards
-   - **Markdown** — write-up form for review
+   - **Markdown** — write-up form for notes and review
    - **PDF** — paper-ready study guide via the print stylesheet
 
 ---
@@ -84,14 +92,14 @@ formulas, code, and proper nouns intact.
               └────────────┬─────────────────────┘
                            ▼
        ┌────────────────────────────────────────────┐
-       │              ffmpeg (60s segments)         │
+       │         ffmpeg (60-second segments)        │
        └────────────┬───────────────────────────────┘
                     ▼
         ╭─── Parallel Whisper workers (×4) ────╮
         │   OpenAI whisper-1                   │
-        │   source_language=auto/en/es/...     │
+        │   source_language = auto / en / ...  │
         ╰────────────┬─────────────────────────╯
-                     ▼ in-order pipeline
+                     ▼  in-order pipeline
        ┌──────────────────────────────────────────┐
        │   Claude Sonnet 4.5 via OpenRouter       │
        │   - 5 tools, OpenAI-compat tool_calls    │
@@ -116,6 +124,7 @@ formulas, code, and proper nouns intact.
 ```
 
 **Why these choices?**
+
 - **Server-Sent Events over WebSockets** — one-way data flow, works through
   Vercel's edge runtime, no protocol negotiation.
 - **OpenRouter for Claude** — single billing relationship for the team,
@@ -123,8 +132,8 @@ formulas, code, and proper nouns intact.
   tool-use semantics.
 - **In-memory session store** — no DB schema decisions, no migrations,
   no leaks. Resets on server restart; appropriate for a hackathon demo.
-- **ffmpeg server-side** — battle-tested chunking; the alternative is
-  streaming raw audio chunks from the browser which is a 4-hour rabbit hole.
+- **ffmpeg server-side** — battle-tested chunking; browser-side streaming
+  audio is a multi-hour rabbit hole with inconsistent codec support.
 
 ---
 
@@ -145,13 +154,16 @@ formulas, code, and proper nouns intact.
 - Dynamic system prompt: target-language instruction injected per session
 
 ### UI / UX
-- Three-column layout (controls / study guide / assignments + office hours)
+- Three-column layout: controls / study guide / assignments + office hours
+- Audio and video file support (.mp3, .wav, .m4a, .mp4, .mov, .webm)
 - Audio player with click-to-jump from any concept's timestamp
-- Live "Listening" status pill in the header with pulsing emerald indicator
+- Live "Listening" status pill with pulsing indicator
 - Live transcript drawer (slide-in Sheet) with auto-scroll and clickable timestamps
-- Empty states with icons and copy that explains what's coming
+- Proctored Quiz Me mode with anti-cheat tab/window detection
+- Completion stats banner with processing time and language summary
+- Empty states with clear onboarding copy
 - Animated card fade-ins (framer-motion)
-- Dark theme by default, full shadcn token-based color system
+- Dark theme, shadcn token-based color system
 
 ### Exports
 - **Markdown** — `/api/export?session_id=...` returns `.md`
@@ -165,17 +177,17 @@ formulas, code, and proper nouns intact.
 
 ## Tech stack
 
-| Layer            | Technology                                              |
-| ---------------- | ------------------------------------------------------- |
-| Framework        | Next.js 16 (App Router) + Turbopack                     |
-| UI library       | React 19 + Tailwind v4 + shadcn/ui (radix-nova) + framer-motion + lucide-react |
-| Transcription    | OpenAI Whisper (`whisper-1`)                             |
-| Agent            | Claude Sonnet 4.5 via OpenRouter (OpenAI-compatible API) |
-| Audio chunking   | `ffmpeg` (system binary on PATH)                        |
-| Streaming        | Server-Sent Events (native fetch + EventSource)         |
-| Calendar export  | `ics` npm package (RFC 5545)                            |
-| State            | In-memory `Map` + tiny event bus, scoped by `session_id` |
-| Hosting          | Vercel (free tier)                                      |
+| Layer            | Technology                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| Framework        | Next.js 16 (App Router) + Turbopack                                                  |
+| UI library       | React 19 + Tailwind v4 + shadcn/ui (radix-nova) + framer-motion + lucide-react       |
+| Transcription    | OpenAI Whisper (`whisper-1`)                                                         |
+| Agent            | Claude Sonnet 4.5 via OpenRouter (OpenAI-compatible API)                             |
+| Audio chunking   | `ffmpeg` (system binary on PATH)                                                     |
+| Streaming        | Server-Sent Events (native fetch + EventSource)                                      |
+| Calendar export  | `ics` npm package (RFC 5545)                                                         |
+| State            | In-memory `Map` + tiny event bus, scoped by `session_id`                             |
+| Hosting          | Vercel (free tier)                                                                   |
 
 ---
 
@@ -184,11 +196,11 @@ formulas, code, and proper nouns intact.
 ### Prerequisites
 - Node.js 20 or newer
 - `ffmpeg` on PATH:
-  - **Windows:** `winget install Gyan.FFmpeg`
   - **macOS:** `brew install ffmpeg`
+  - **Windows:** `winget install Gyan.FFmpeg`
   - **Linux:** `apt install ffmpeg`
-- An **OpenAI API key** (for Whisper transcription) — `https://platform.openai.com`
-- An **OpenRouter API key** (for Claude via OpenRouter) — `https://openrouter.ai/keys`
+- An **OpenAI API key** (for Whisper transcription) — https://platform.openai.com
+- An **OpenRouter API key** (for Claude via OpenRouter) — https://openrouter.ai/keys
 
 ### Run locally
 
@@ -201,8 +213,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 → select languages → drop a lecture audio file
-or click "Use bundled demo" if `public/demo_lecture.mp3` is present.
+Open http://localhost:3000 → select languages → drop a lecture audio or video file.
 
 ### Deploy to Vercel
 
@@ -213,11 +224,11 @@ vercel
 
 Then in the Vercel dashboard → Project → Settings → Environment Variables:
 
-| Name                   | Value                              |
-| ---------------------- | ---------------------------------- |
-| `OPENAI_API_KEY`       | `sk-proj-...` (Whisper)            |
-| `OPENROUTER_API_KEY`   | `sk-or-v1-...` (Claude)            |
-| `NODE_ENV`             | `production`                       |
+| Name                   | Value                                 |
+| ---------------------- | ------------------------------------- |
+| `OPENAI_API_KEY`       | `sk-proj-...` (Whisper)               |
+| `OPENROUTER_API_KEY`   | `sk-or-v1-...` (Claude via OpenRouter) |
+| `NODE_ENV`             | `production`                          |
 
 Redeploy. ffmpeg is preinstalled on Vercel's Node runtime.
 
@@ -225,14 +236,14 @@ Redeploy. ffmpeg is preinstalled on Vercel's Node runtime.
 
 ## API routes
 
-| Route                                | Method | Purpose                                                    |
-| ------------------------------------ | ------ | ---------------------------------------------------------- |
+| Route                                | Method | Purpose                                                               |
+| ------------------------------------ | ------ | --------------------------------------------------------------------- |
 | `/api/upload`                        | POST   | Accept audio + language fields, kick the pipeline, return `session_id` |
-| `/api/stream?session_id=...`         | GET    | Server-Sent Events stream of agent events                  |
-| `/api/status?session_id=...`         | GET    | Polling fallback if SSE is blocked by a proxy              |
-| `/api/export?session_id=...`         | GET    | Download the study guide as Markdown                       |
-| `/api/anki?session_id=...`           | GET    | Download Anki-compatible flashcard CSV                     |
-| `/api/calendar/[id]?session_id=...`  | GET    | Download a single assignment as a `.ics` file              |
+| `/api/stream?session_id=...`         | GET    | Server-Sent Events stream of agent events                             |
+| `/api/status?session_id=...`         | GET    | Polling fallback if SSE is blocked by a proxy                         |
+| `/api/export?session_id=...`         | GET    | Download the study guide as Markdown                                  |
+| `/api/anki?session_id=...`           | GET    | Download Anki-compatible flashcard CSV                                |
+| `/api/calendar/[id]?session_id=...`  | GET    | Download a single assignment as a `.ics` calendar file                |
 
 ---
 
@@ -246,20 +257,21 @@ app/
     status/route.ts          ─ polling fallback
     export/route.ts          ─ Markdown export
     anki/route.ts            ─ Anki CSV export
-    calendar/[id]/route.ts   ─ .ics export (Next 16 async params)
+    calendar/[id]/route.ts   ─ .ics export
   layout.tsx · page.tsx · globals.css
 
 components/
-  AudioUploader · AudioPlayer · LectureProgress · LanguageSelector ·
-  ConceptCard · AssignmentCard · QuestionList · TranscriptSheet · ExportBar
+  AudioUploader · MediaPlayer · LectureProgress · LanguageSelector ·
+  ConceptCard · AssignmentCard · QuestionList · TranscriptSheet ·
+  ExportBar · StatsBanner · QuizGuard
 components/ui/              ─ shadcn primitives (button, card, progress,
                               badge, separator, scroll-area, select, sheet)
 
 lib/
   agent.ts                   ─ Claude agent loop + 5 tool definitions
   whisper.ts                 ─ OpenAI Whisper wrapper (language optional)
-  ffmpeg.ts                  ─ chunking helper
-  ics.ts                     ─ assignment → .ics with reminder
+  ffmpeg.ts                  ─ 60-second audio chunking helper
+  ics.ts                     ─ assignment → .ics with 24h reminder
   state.ts                   ─ in-memory session + event bus
   types.ts                   ─ shared types + LANGUAGES list + CHUNK_SECONDS
   utils.ts                   ─ shadcn `cn()` helper
@@ -269,15 +281,16 @@ lib/
 
 ## Performance
 
-| Metric                                    | Sequential         | Pipelined (current) |
-| ----------------------------------------- | ------------------ | ------------------- |
-| 30s chunks for 43-min lecture             | 87                 | 44 (60s chunks)     |
-| Avg Whisper latency per chunk             | ~5s                | ~5s × 4 in parallel |
-| Avg Claude latency per chunk              | ~3-5s (sequential) | ~3-5s (sequential)  |
-| End-to-end wall time (43 min lecture)     | ~14 min            | **~3-4 min**        |
-| First concept visible after upload        | ~10s               | **~10s**            |
+| Metric                                | Sequential            | Pipelined (current)   |
+| ------------------------------------- | --------------------- | --------------------- |
+| Chunk size                            | 30s                   | 60s                   |
+| Chunks for a 43-min lecture           | 87                    | 44                    |
+| Avg Whisper latency per chunk         | ~5s                   | ~5s × 4 in parallel   |
+| Avg Claude latency per chunk          | ~3–5s (sequential)    | ~3–5s (sequential)    |
+| End-to-end wall time (43-min lecture) | ~14 min               | **~3–4 min**          |
+| First concept visible after upload    | ~15s                  | **~15s**              |
 
-The first concept appears within ~10 seconds of upload because chunk 1's
+The first concept appears within ~15 seconds of upload because chunk 1's
 transcript completes and feeds the agent before later chunks finish.
 
 ---
@@ -303,16 +316,16 @@ These were debated and explicitly cut to keep the demo tight:
 - **Local Whisper** (whisper.cpp) so audio never leaves the device — a
   privacy story for university accessibility offices
 - **Canvas / Google Classroom** integration to auto-attach study guides to courses
-- **"Quiz me" mode** where the agent quizzes the student on the practice questions
+- **"Quiz me" deepening** — spaced repetition scheduling for concept cards
 - **Per-class persistent study guides** with cross-lecture concept linking
 - **Speaker diarization** (TA vs professor vs student questions)
 
 ---
 
-## AI disclosure (per Spy-Hacks rules)
+## AI disclosure *(per Spy-Hacks rules)*
 
 - **Claude Code (Opus 4.7, 1M context window)** was used as a pair-programming
-  assistant for the entire build. Specifically:
+  assistant for the entire build:
   - Drafted the initial Next.js scaffolding and project structure
   - Wrote the agent system prompt, tool schemas, and the OpenAI SDK ↔ OpenRouter
     integration from scratch
@@ -345,8 +358,7 @@ figure out what mattered. Ghost TA is built from real frustration.
 
 ## License
 
-MIT — see [LICENSE](LICENSE) for full text. Use it, fork it, ship it. Just
-don't pretend you wrote it.
+MIT — see [LICENSE](LICENSE) for full text. Use it, fork it, ship it.
 
 ---
 

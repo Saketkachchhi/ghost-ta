@@ -157,7 +157,7 @@ production, upgrade to Pro for 800-second timeouts.
 
 ## 9. Repo state
 
-- **Main:** all 9 feature commits + merge commit, fully shipped
+- **Main:** 20 commits, fully shipped
 - **PR #1:** merged
 - **TypeScript:** clean (`npx tsc --noEmit` exits 0)
 - **ESLint:** clean (`npm run lint` exits 0)
