@@ -348,7 +348,7 @@ These were debated and explicitly cut to keep the demo tight:
 | ----------------- | ---------------- | ------------------------------------------------ |
 | Aditya Patel      | Backend + Agent  | LLM tooling, agent loops, system design          |
 | Jeel Patel        | Frontend + UX    | Next.js, React, real-time UIs                    |
-| Saket Kachchhi    | Demo + Pitch     | Storytelling, screen recording, judge Q&A        |
+| Saket Kachchhi    | Project lead     | Storytelling, screen recording, judge Q&A        |
 
 All three are F-1 international graduate students at Stevens Institute of
 Technology. We've all sat through lectures in our second language trying to
